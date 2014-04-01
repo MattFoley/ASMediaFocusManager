@@ -7,10 +7,15 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <CoreData/CoreData.h>
 
 @class ASMediaFocusManager;
 
 @protocol ASMediasFocusDelegate <NSObject>
+
+- (void)mediaFocusManager:(ASMediaFocusManager *)mediaFocusManager deleteManagedObjectForView:(UIView *)view;
+
+- (NSManagedObject *)mediaFocusManager:(ASMediaFocusManager *)mediaFocusManager managedObjectForView:(UIView *)view;
 
 // Returns an image that represents the media view. This image is used in the focusing animation view. It is usually a small image.
 - (UIImage *)mediaFocusManager:(ASMediaFocusManager *)mediaFocusManager imageForView:(UIView *)view;

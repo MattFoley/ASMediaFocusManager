@@ -9,6 +9,8 @@
 #import "ASMediaFocusManager.h"
 #import "ASMediaFocusController.h"
 #import <QuartzCore/QuartzCore.h>
+#import <AviarySDK/AviarySDK.h>
+#import "RNSImage.h"
 
 static CGFloat const kAnimateElasticSizeRatio = 0.03;
 static CGFloat const kAnimateElasticDurationRatio = 0.6;
@@ -16,7 +18,7 @@ static CGFloat const kAnimateElasticSecondMoveSizeRatio = 0.5;
 static CGFloat const kAnimateElasticThirdMoveSizeRatio = 0.2;
 static CGFloat const kAnimationDuration = 0.5;
 
-@interface ASMediaFocusManager ()
+@interface ASMediaFocusManager () <AFPhotoEditorControllerDelegate>
 // The media view being focused.
 @property (nonatomic, strong) ASMediaFocusController *focusViewController;
 @property (nonatomic, strong) ASMediaFocusController *pendingFocusViewController;
@@ -120,21 +122,9 @@ static CGFloat const kAnimationDuration = 0.5;
 
 - (void)installDefocusActionOnFocusViewController:(ASMediaFocusController *)focusViewController
 {
-    // We need the view to be loaded.
-    if(focusViewController.view)
-    {
-        if(self.isDefocusingWithTap)
-        {
-            UITapGestureRecognizer *tapGesture;
-            
-            tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDefocusGesture:)];
-            [focusViewController.view addGestureRecognizer:tapGesture];
-        }
-        else
-        {
-            [self setupAccessoryViewOnFocusViewController:self.focusViewController];
-        }
-    }
+    UITapGestureRecognizer *tapGesture;
+    tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDefocusGesture:)];
+    [focusViewController.view addGestureRecognizer:tapGesture];
 }
 
 - (ASMediaFocusController *)focusViewControllerForView:(UIView *)mediaView
@@ -213,22 +203,73 @@ static CGFloat const kAnimationDuration = 0.5;
     [self.focusViewController pinAccessoryView];
 }
 
-- (void)setupAccessoryViewOnFocusViewController:(ASMediaFocusController *)focusViewController
+- (void)setupAccessoryViewOnFocusViewController
 {
-    UIButton *doneButton;
+    UIButton *shareButton;
+    shareButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [shareButton setBackgroundImage:[UIImage imageNamed:@"btn"] forState:UIControlStateNormal];
+    [shareButton setBackgroundImage:[UIImage imageNamed:@"btn_down"] forState:UIControlStateHighlighted];
+    [shareButton setTitle:NSLocalizedString(@"Share", @"Share") forState:UIControlStateNormal];
+    [shareButton addTarget:self action:@selector(shareImage) forControlEvents:UIControlEventTouchUpInside];
+    shareButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    [shareButton.titleLabel setFont:[UIFont fontWithName:@"AvenirNext-Regular" size:14]];
+    shareButton.frame = CGRectMake(0, 0, 61, 24);
+    shareButton.layer.borderWidth = 2;
+    shareButton.layer.cornerRadius = 4;
+    shareButton.layer.borderColor = [UIColor whiteColor].CGColor;
+    shareButton.center = CGPointMake(shareButton.bounds.size.width/2 + 10,
+                                     self.pageViewController.view.bounds.size.height - shareButton.bounds.size.height/2 - 10);
+    shareButton.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
+    [self.pageViewController.view addSubview:shareButton];
     
-    doneButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    [doneButton setTitle:NSLocalizedString(@"Done", @"Done") forState:UIControlStateNormal];
-    [doneButton addTarget:self action:@selector(handleDefocusGesture:) forControlEvents:UIControlEventTouchUpInside];
-    doneButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
-    [doneButton sizeToFit];
-    doneButton.frame = CGRectInset(doneButton.frame, -20, -4);
-    doneButton.layer.borderWidth = 2;
-    doneButton.layer.cornerRadius = 4;
-    doneButton.layer.borderColor = [UIColor whiteColor].CGColor;
-    doneButton.center = CGPointMake(focusViewController.accessoryView.bounds.size.width - doneButton.bounds.size.width/2 - 10, doneButton.bounds.size.height/2 + 10);
-    doneButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
-    [self.pageViewController.view addSubview:doneButton];
+    
+    //Aviary Edit Button
+    UIButton *editButton;
+    editButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [editButton setBackgroundImage:[UIImage imageNamed:@"btn"] forState:UIControlStateNormal];
+    [editButton setBackgroundImage:[UIImage imageNamed:@"btn_down"] forState:UIControlStateHighlighted];
+    [editButton setTitle:NSLocalizedString(@"Edit", @"Edit") forState:UIControlStateNormal];
+    [editButton addTarget:self action:@selector(editImage) forControlEvents:UIControlEventTouchUpInside];
+    editButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    [editButton.titleLabel setFont:[UIFont fontWithName:@"AvenirNext-Regular" size:14]];
+    editButton.frame = CGRectMake(0, 0, 61, 24);
+    editButton.layer.borderWidth = 2;
+    editButton.layer.cornerRadius = 4;
+    editButton.layer.borderColor = [UIColor whiteColor].CGColor;
+    editButton.center = CGPointMake(self.pageViewController.view.bounds.size.width - editButton.bounds.size.width/2 - 10,
+                                    editButton.bounds.size.height/2 + 10);
+    editButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
+    [self.pageViewController.view addSubview:editButton];
+    
+    //Aviary Edit Button
+    UIButton *deleteButton;
+    deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [deleteButton setBackgroundImage:[UIImage imageNamed:@"btn"] forState:UIControlStateNormal];
+    [deleteButton setBackgroundImage:[UIImage imageNamed:@"btn_down"] forState:UIControlStateHighlighted];
+    [deleteButton setTitle:NSLocalizedString(@"Delete", @"Delete") forState:UIControlStateNormal];
+    [deleteButton addTarget:self action:@selector(deleteImage) forControlEvents:UIControlEventTouchUpInside];
+    [deleteButton.titleLabel setFont:[UIFont fontWithName:@"AvenirNext-Regular" size:14]];
+    deleteButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    deleteButton.frame = CGRectMake(0, 0, 61, 24);
+    deleteButton.layer.borderWidth = 2;
+    deleteButton.layer.cornerRadius = 4;
+    deleteButton.layer.borderColor = [UIColor whiteColor].CGColor;
+    deleteButton.center = CGPointMake(self.pageViewController.view.bounds.size.width - deleteButton.bounds.size.width/2 - 10,
+                                    self.pageViewController.view.bounds.size.height - deleteButton.bounds.size.height/2 - 10);
+    deleteButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
+    [self.pageViewController.view addSubview:deleteButton];
+    
+    deleteButton.alpha = 0;
+    editButton.alpha = 0;
+    shareButton.alpha = 0;
+    
+    [UIView animateWithDuration:0.5
+                     animations:^{
+                         deleteButton.alpha = 1;
+                         editButton.alpha = 1;
+                         shareButton.alpha = 1;
+                     }];
+    
 }
 
 - (void)createPageViewControllerForFocusViewController:(ASMediaFocusController *)focusVC
@@ -249,6 +290,8 @@ static CGFloat const kAnimationDuration = 0.5;
     [self.pageViewController setDelegate:self];
     [self.pageViewController setDataSource:self];
     [self.pageViewController didMoveToParentViewController:parentViewController];
+    
+    [self setupAccessoryViewOnFocusViewController];
 }
 
 - (void)cleanPageController
@@ -376,6 +419,64 @@ static CGFloat const kAnimationDuration = 0.5;
                          
                      }];
 }
+
+- (void)shareImage
+
+{
+    
+    [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Share Started" label:nil value:nil fromScreen:@"Bedhead View"];
+    
+    UIActivityViewController *activityController = [[UIActivityViewController alloc] initWithActivityItems:@[self.focusViewController.mainImageView.image,
+                                                                                                             @"I woke up with a smile on my face this morning!"]
+                                                                                     applicationActivities:nil];
+    
+    [activityController setCompletionHandler:^(NSString *activityType, BOOL completed) {
+        [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Share Completed" label:activityType value:nil fromScreen:@"Bedhead View"];
+    }];
+    
+    [[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:activityController animated:YES completion:nil];
+    
+}
+
+#pragma mark - Actions
+
+- (void)editImage
+{
+    [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Edit Image" label:nil value:nil fromScreen:@"Bedhead View"];
+    AFPhotoEditorController * photoEditor = [[AFPhotoEditorController alloc] initWithImage:self.focusViewController.mainImageView.image];
+    [photoEditor setDelegate:self];
+    [[self.delegate parentViewControllerForMediaFocusManager:self] presentViewController:photoEditor animated:YES completion:nil];
+}
+
+- (void)deleteImage
+{
+    [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Delete Image" label:nil value:nil fromScreen:@"Bedhead View"];
+    [self.delegate mediaFocusManager:self deleteManagedObjectForView:self.focusViewController.mediaView];
+    [self handleDefocusGesture:nil];
+}
+
+#pragma mark - Aviary
+
+- (void)photoEditor:(AFPhotoEditorController *)editor finishedWithImage:(UIImage *)image
+{
+    [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Finished Editing Image" label:@"Saved" value:nil fromScreen:@"Bedhead View"];
+    RNSImage *imageObj = (RNSImage*)[self.delegate mediaFocusManager:self managedObjectForView:self.focusViewController.mediaView];
+    [imageObj updateImage:image];
+    [(UIImageView*)self.focusViewController.mediaView setImage:image];
+    [self.focusViewController.mainImageView setImage:image];
+    [self.focusViewController.scrollView.zoomImageView setImage:image];
+    [[self.delegate parentViewControllerForMediaFocusManager:self] dismissViewControllerAnimated:YES
+                                                                                      completion:nil];
+}
+
+- (void)photoEditorCanceled:(AFPhotoEditorController *)editor
+{
+    [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Finished Editing Image" label:@"Canceled" value:nil fromScreen:@"Bedhead View"];
+    [[self.delegate parentViewControllerForMediaFocusManager:self] dismissViewControllerAnimated:YES
+                                                                                      completion:nil];
+}
+
+
 
 #pragma mark - Page View Controller Data Source
 
