@@ -141,6 +141,7 @@ static CGFloat const kAnimationDuration = 0.5;
     viewController.mediaView = mediaView;
     viewController.titleLabel.text = [self.delegate mediaFocusManager:self titleForView:mediaView];
     viewController.mainImageView.image = image;
+    viewController.view.backgroundColor = [UIColor colorWithWhite:0 alpha:.6];
     [viewController.mainImageView setContentMode:UIViewContentModeScaleAspectFit];
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -222,6 +223,23 @@ static CGFloat const kAnimationDuration = 0.5;
     shareButton.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
     [self.pageViewController.view addSubview:shareButton];
     
+    UIButton *doneButton;
+    doneButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [doneButton setBackgroundImage:[UIImage imageNamed:@"btn"] forState:UIControlStateNormal];
+    [doneButton setBackgroundImage:[UIImage imageNamed:@"btn_down"] forState:UIControlStateHighlighted];
+    [doneButton setTitle:NSLocalizedString(@"Close", @"Close") forState:UIControlStateNormal];
+    [doneButton addTarget:self action:@selector(handleDefocusGesture:) forControlEvents:UIControlEventTouchUpInside];
+    doneButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    [doneButton.titleLabel setFont:[UIFont fontWithName:@"AvenirNext-Regular" size:14]];
+    doneButton.frame = CGRectMake(0, 0, 61, 24);
+    doneButton.layer.borderWidth = 2;
+    doneButton.layer.cornerRadius = 4;
+    doneButton.layer.borderColor = [UIColor whiteColor].CGColor;
+    doneButton.center = CGPointMake(doneButton.bounds.size.width/2 + 10,
+                                     doneButton.bounds.size.height/2 + 10);
+    doneButton.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
+    [self.pageViewController.view addSubview:doneButton];
+    
     
     //Aviary Edit Button
     UIButton *editButton;
@@ -262,12 +280,14 @@ static CGFloat const kAnimationDuration = 0.5;
     deleteButton.alpha = 0;
     editButton.alpha = 0;
     shareButton.alpha = 0;
+    doneButton.alpha = 0;
     
     [UIView animateWithDuration:0.5
                      animations:^{
                          deleteButton.alpha = 1;
                          editButton.alpha = 1;
                          shareButton.alpha = 1;
+                         doneButton.alpha = 1;
                      }];
     
 }
@@ -392,26 +412,20 @@ static CGFloat const kAnimationDuration = 0.5;
         return;
     }
     
-    UIView *contentView;
-    
-    [self uninstallZoomView];
-    
-    contentView = self.focusViewController.mainImageView;
     [UIView animateWithDuration:.3
                      animations:^{
+                         [self.pageViewController.view setAlpha:0];
+                         
                          if (self.delegate && [self.delegate respondsToSelector:@selector(mediaFocusManagerWillDisappear:)])
                          {
                              [self.delegate mediaFocusManagerWillDisappear:self];
                          }
-                         self.focusViewController.view.alpha = 0;
-                         self.focusViewController.view.backgroundColor = [UIColor clearColor];
-                         self.focusViewController.accessoryView.alpha = 0;
                      }
                      completion:^(BOOL finished) {
                          
                          self.focusViewController.mediaView.hidden = NO;
                          [self cleanPageController];
-                         
+                         [self uninstallZoomView];
                          if (self.delegate && [self.delegate respondsToSelector:@selector(mediaFocusManagerDidDisappear:)])
                          {
                              [self.delegate mediaFocusManagerDidDisappear:self];
@@ -421,21 +435,16 @@ static CGFloat const kAnimationDuration = 0.5;
 }
 
 - (void)shareImage
-
 {
-    
     [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Share Started" label:nil value:nil fromScreen:@"Bedhead View"];
     
-    UIActivityViewController *activityController = [[UIActivityViewController alloc] initWithActivityItems:@[self.focusViewController.mainImageView.image,
-                                                                                                             @"I woke up with a smile on my face this morning!"]
+    UIActivityViewController *activityController = [[UIActivityViewController alloc] initWithActivityItems:@[self.focusViewController.mainImageView.image, @"I woke up with a smile this morning!"]
                                                                                      applicationActivities:nil];
-    
     [activityController setCompletionHandler:^(NSString *activityType, BOOL completed) {
         [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Share Completed" label:activityType value:nil fromScreen:@"Bedhead View"];
     }];
     
     [[[[UIApplication sharedApplication] keyWindow] rootViewController] presentViewController:activityController animated:YES completion:nil];
-    
 }
 
 #pragma mark - Actions
@@ -443,7 +452,8 @@ static CGFloat const kAnimationDuration = 0.5;
 - (void)editImage
 {
     [[RNSAppDelegate appDelegate] trackEventWithName:@"Bedhead View" action:@"Edit Image" label:nil value:nil fromScreen:@"Bedhead View"];
-    AFPhotoEditorController * photoEditor = [[AFPhotoEditorController alloc] initWithImage:self.focusViewController.mainImageView.image];
+        RNSImage *imageObj = (RNSImage*)[self.delegate mediaFocusManager:self managedObjectForView:self.focusViewController.mediaView];
+    AFPhotoEditorController * photoEditor = [[AFPhotoEditorController alloc] initWithImage:[UIImage imageWithData:imageObj.cImage]];
     [photoEditor setDelegate:self];
     [[self.delegate parentViewControllerForMediaFocusManager:self] presentViewController:photoEditor animated:YES completion:nil];
 }
