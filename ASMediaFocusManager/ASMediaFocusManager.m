@@ -14,8 +14,7 @@
 
 static CGFloat const kAnimateElasticSizeRatio = 0.03;
 static CGFloat const kAnimateElasticDurationRatio = 0.6;
-static CGFloat const kAnimateElasticSecondMoveSizeRatio = 0.5;
-static CGFloat const kAnimateElasticThirdMoveSizeRatio = 0.2;
+
 static CGFloat const kAnimationDuration = 0.5;
 
 @interface ASMediaFocusManager () <AFPhotoEditorControllerDelegate>

@@ -79,6 +79,9 @@ static NSTimeInterval const kDefaultOrientationAnimationDuration = 0.4;
             
         case UIInterfaceOrientationLandscapeRight:
             return [self.parentViewController supportedInterfaceOrientations] & UIInterfaceOrientationMaskLandscapeRight;
+            
+        default:
+            return [self.parentViewController supportedInterfaceOrientations] & UIInterfaceOrientationMaskPortrait;
     }
 }
 
